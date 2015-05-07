@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os
+import argparse
+import subprocess
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-u", "--update", dest="update",
+                    default=None)
+parser.add_argument("-r", "--reviewer", dest="reviewer",
+                    default="Mathieu_Du")
+parser.add_argument("-f", "--fast", dest="fast",
+                    default=False, action='store_true',
+                    help="Just write files in vim without letting us a changes to change it")
+
+(options, args) = parser.parse_known_args()
+
+add_differential_dependency = """
+if [ ! -z "$(git log --format=%B -n 1 HEAD^ |grep -i Revision |cut -d' ' -f3)" ];
+then
+    if [ -z "$(git log --format=%B -n 1 HEAD |grep -i Depends)" ];
+    then
+        git log --format=%B -n 1 HEAD > /tmp/tmp_commit && \
+        echo "Depends on: " $(git log --format=%B -n 1 HEAD^ |grep -i Revision |cut -d' ' -f3) >> /tmp/tmp_commit && git \
+        commit --amend -F /tmp/tmp_commit && rm /tmp/tmp_commit;
+    ;
+fi
+""".replace("\n", "")
+
+arc_command = "arc diff --reviewers=%s --allow-untracked " % options.reviewer
+
+if options.update:
+    arc_command += ' --message="%s"' % options.update
+
+env = ""
+if options.fast:
+    env = 'GIT_EDITOR="vim +wq"'
+
+arc_command += " HEAD^"
+
+print("Launching: %s git rebase -i --exec '%s' --exec '%s' %s" % (env, add_differential_dependency, arc_command, ' '.join(args)))
+# os.system("%s git rebase -i --exec '%s' %s" % (env, arc_command, ' '.join(args)))
