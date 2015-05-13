@@ -1,0 +1,31 @@
+#!/bin/sh
+
+prev_commit_revision=$(git log --format=%B -n 1 HEAD^ |grep -i Revision |cut -d'/' -f4-)
+current_dependency=$(git log --format=%B -n 1 HEAD |grep -i Depends|cut -d'/' -f4-)
+
+if [ -z "$prev_commit_revision" ];
+then
+    exit 0
+fi
+
+if [ -z  "$(echo $current_dependency |grep $prev_commit_revision)" ];
+then
+    if [ ! -z "$prev_commit_revision" ];
+    then
+        git log --format=%B -n 1 HEAD |grep -v "Depends on" > /tmp/tmp_commit &&
+        echo "" >> /tmp/tmp_commit &&
+        echo "Depends on" $prev_commit_revision >> /tmp/tmp_commit &&
+        git commit --amend -F /tmp/tmp_commit > /dev/null 2>&1 &&
+        rm /tmp/tmp_commit; > /dev/null 2>&1
+    else
+        git log --format=%B -n 1 HEAD > /tmp/tmp_commit &&
+        echo "" >> /tmp/tmp_commit &&
+        echo "Depends on" $prev_commit_revision >> /tmp/tmp_commit &&
+        git commit --amend -F /tmp/tmp_commit > /dev/null 2>&1 && rm /tmp/tmp_commit;
+    fi;
+    res=$?
+
+    echo "HEAD has been amended adding: 'Depends on: $(git log --format=%B -n 1 HEAD^ |grep -i Revision |cut -d' ' -f3)'"
+
+    exit $res
+fi;
