@@ -3,28 +3,30 @@
 import os
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-u", "--update", dest="update",
-                    default=None)
-parser.add_argument("-r", "--reviewer", dest="reviewer",
-                    default="Mathieu_Du")
-parser.add_argument("-f", "--fast", dest="fast",
-                    default=False, action='store_true',
-                    help="Just write files in vim without letting us a chance to change it")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-u", "--update", dest="update",
+                        default=None)
+    parser.add_argument("-r", "--reviewers", dest="reviewers",
+                        default=None,
+                        help="Comma separated list of reviewer (nicknames)")
+    parser.add_argument("-f", "--fast", dest="fast",
+                        default=False, action='store_true',
+                        help="Just write files in vim without letting us a chance to change it")
 
-(options, args) = parser.parse_known_args()
+    (options, args) = parser.parse_known_args()
+    add_differential_dependency = "arc-add-dep"
+    arc_command = "arc diff --allow-untracked "
+    if options.reviewers:
+        arc_command += " --reviewers=%s " % options.reviewers
 
-add_differential_dependency = "arc-add-dep"
+    if options.update:
+        arc_command += ' --message="%s"' % options.update
 
-arc_command = "arc diff --reviewers=%s --allow-untracked " % options.reviewer
+    env = ""
+    if options.fast:
+        env = 'GIT_EDITOR="vim +wq"'
 
-if options.update:
-    arc_command += ' --message="%s"' % options.update
+    arc_command += " HEAD^"
 
-env = ""
-if options.fast:
-    env = 'GIT_EDITOR="vim +wq"'
-
-arc_command += " HEAD^"
-
-os.system("%s git rebase -i --exec '%s; %s' %s" % (env, add_differential_dependency, arc_command, ' '.join(args)))
+    os.system("%s git rebase -i --exec '%s; %s' %s" % (env, add_differential_dependency, arc_command, ' '.join(args)))
